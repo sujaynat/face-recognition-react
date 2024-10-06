@@ -3,7 +3,7 @@ body {
   font-family: "Inria+Sans:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap",cursive;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(90deg,#74EBD5 20%,#2B86C5 100%);
+  background: linear-gradient(90deg,#bdb9e2 20%,#2B86C5 100%);
   /*background: linear-gradient(0deg, #FFDEE9 0%, #B5FFFC 100%);*/
 }
 
