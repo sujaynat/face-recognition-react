@@ -25,7 +25,7 @@ const ParticlesComponent = (props) => {
 
   const options = useMemo(
     () => ({
-      fpsLimit: 120,
+      fpsLimit: 100,
       interactivity: {
         events: {
           onClick: {
@@ -62,26 +62,26 @@ const ParticlesComponent = (props) => {
           width: 1,
         },
         move: {
-          direction: "none",
+          direction: "up",
           enable: true,
           outModes: {
             default: "bounce",
           },
           random: true,
           speed: 3,
-          straight: false,
+          straight: true,
         },
         number: {
           density: {
             enable: true,
           },
-          value: 250,
+          value: 200,
         },
         opacity: {
           value: 1.0,
         },
         shape: {
-          type: "hexagon",
+          type: "square",
         },
         size: {
           value: { min: 1, max: 3 },
