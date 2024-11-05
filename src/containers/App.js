@@ -19,7 +19,7 @@ class App extends Component {
       box: {},
       route:'Signin',
       isSignedIn: false
-    }
+    } 
   }
 
   displayFaceBox=(box) =>{
