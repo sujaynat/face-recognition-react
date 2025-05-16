@@ -11,14 +11,15 @@ import Register from '../components/Register/Register';
 
 const initialState = {
   input: "",
-  imageUrl:"",
-  box: {},
-  route:'Signin',
+  imageUrl: "",
+  boxes: [],
+  route: 'Signin',
   isSignedIn: false,
-  user:{
+  error: null,
+  user: {
     id: "",
     name: "",
-    email:"",
+    email: "",
     entries: 0,
     joined: ""
   }
@@ -30,83 +31,116 @@ class App extends Component {
     this.state = initialState 
   }
 
-  loadUser = (data) =>{
-    this.setState({user:{
-      id: data.id,
-      name: data.name,
-      email:data.email,
-      entries: data.entries,
-      joined: data.joined
-    }
-
+  loadUser = (data) => {
+    this.setState({
+      user: {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        entries: data.entries,
+        joined: data.created_at
+      },
+      imageUrl: "",
+      input: "",
+      boxes: []
     })
   }
 
-  displayFaceBox=(box) =>{
-    this.setState({box:box});
+  displayFaceBoxes = (boxes) => {
+    this.setState({ boxes: boxes });
   }
 
-  calculateFaceLocation = (response) =>{
-    const face = response.outputs[0].data.regions[0].region_info.bounding_box;
+  calculateFaceLocations = (response) => {
+    if (!response || !response.outputs || !response.outputs[0] || !response.outputs[0].data) {
+      throw new Error('Invalid response format from API');
+    }
+
     const image = document.getElementById("inputimage");
+    if (!image) {
+      throw new Error('Image element not found');
+    }
+
     const width = Number(image.width);
     const height = Number(image.height);
-    const faceBox ={
-      leftCol: face.left_col * width,
-      topRow: face.top_row * height,
-      rightCol: width - (face.right_col * width),
-      bottomRow: height - (face.bottom_row * height)
-    }
-    return faceBox;
 
+    // Process all regions/faces
+    return response.outputs[0].data.regions.map(region => {
+      const face = region.region_info.bounding_box;
+      return {
+        leftCol: face.left_col * width,
+        topRow: face.top_row * height,
+        rightCol: width - (face.right_col * width),
+        bottomRow: height - (face.bottom_row * height)
+      };
+    });
   }
+
   onInputChange =(event) => {
     this.setState({input: event.target.value})
-    console.log({input: event.target.value});
   }
 
-  onButtonSubmit = () =>{
-    this.setState({imageUrl: this.state.input});
-    fetch('https://face-recognition-api-8lh5.onrender.com/imageurl', {
+  onButtonSubmit = () => {
+    this.setState({imageUrl: this.state.input, error: null});
+    fetch(`${process.env.REACT_APP_API_URL}/imageurl`, {
       method: 'post',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         input: this.state.input
       })
     })
-    .then(response => response.json())
     .then(response => {
-      if (response) {
-        fetch('https://face-recognition-api-8lh5.onrender.com/image', {
+      if (!response.ok) {
+        throw new Error('Failed to process image');
+      }
+      return response.json();
+    })
+    .then(response => {
+      if (response && response.outputs) {
+        fetch(`${process.env.REACT_APP_API_URL}/image`, {
           method: 'put',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
             id: this.state.user.id
           })
         })
-          .then(response => response.json())
-          .then(count => {
-            this.setState(Object.assign(this.state.user, { entries: count}))
-          })
-          .catch(err=> console.log("Unable to fetch image"))
+        .then(response => response.json())
+        .then(count => {
+          this.setState(Object.assign(this.state.user, { entries: count}))
+        })
+        .catch(err => {
+          console.error("Unable to update entries:", err);
+          this.setState({ error: "Failed to update entry count" });
+        });
 
+        try {
+          const boxes = this.calculateFaceLocations(response);
+          this.displayFaceBoxes(boxes);
+        } catch (error) {
+          console.error("Error calculating face locations:", error);
+          this.setState({ error: "No faces detected in the image" });
+        }
+      } else {
+        this.setState({ error: "Invalid response from face detection service" });
       }
-      this.displayFaceBox(this.calculateFaceLocation(response))
     })
-    .catch(err => console.log(err));
+    .catch(err => {
+      console.error("Error processing image:", err);
+      this.setState({ error: "Failed to process image. Please try again." });
+    });
   }
 
-  onRouteChange = (route) =>{
+  onRouteChange = (route) => {
     if(route === 'Signout'){
       this.setState(initialState);
-    }else if(route==='home'){
-      this.setState({isSignedIn:true});
+      route = 'Signin';  // Redirect to signin page after signout
+    } else if(route === 'home'){
+      this.setState({isSignedIn: true});
     }
-    this.setState({route:route})
+    this.setState({route: route});
   }
 
   render(){
-    const {imageUrl, box, route,isSignedIn } = this.state;
+    const {imageUrl, boxes, route, isSignedIn, error } = this.state;
     return(
       <div className='App'>
         <ParticlesComponent className = "particles"/>
@@ -122,15 +156,19 @@ class App extends Component {
                     onInputChange= {this.onInputChange}
                     onButtonSubmit= {this.onButtonSubmit}
                   />
-            <FaceRecognition box={box} imageUrl = {imageUrl}/>
-        </div>     
-        :(
-          route==='Signin'?   
-            <Signin loadUser={this.loadUser} onRouteChange = {this.onRouteChange} />
-          : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
-        )
-      }
-           
+            {error && (
+              <div className="center">
+                <p className="dark-red f3">{error}</p>
+              </div>
+            )}
+            <FaceRecognition boxes={boxes} imageUrl = {imageUrl}/>
+          </div>     
+          :(
+            route==='Signin'?   
+              <Signin loadUser={this.loadUser} onRouteChange = {this.onRouteChange} />
+            : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
+          )
+        }
       </div>
     );
   }

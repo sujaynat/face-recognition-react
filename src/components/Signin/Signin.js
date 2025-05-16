@@ -1,12 +1,12 @@
 import React from 'react';
 
-
 class Signin extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       signInEmail: '',
-      signInPassword: ''
+      signInPassword: '',
+      error: null
     }
   }
 
@@ -19,7 +19,7 @@ class Signin extends React.Component {
   }
 
   onSubmitSignIn = () => {
-    fetch('https://face-recognition-api-8lh5.onrender.com/signin', {
+    fetch(`${process.env.REACT_APP_API_URL}/signin`, {
       method: 'post',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
@@ -27,13 +27,23 @@ class Signin extends React.Component {
         password: this.state.signInPassword
       })
     })
-      .then(response => response.json())
-      .then(user => {
-        if (user.id) {
-          this.props.loadUser(user)
-          this.props.onRouteChange('home');
-        }
-      })
+    .then(response => response.json())
+    .then(user => {
+      if (user.id) {
+        this.props.loadUser(user);
+        this.props.onRouteChange('home');
+      } else {
+        this.setState({ 
+          error: 'Invalid credentials. New user? Please register below!' 
+        });
+      }
+    })
+    .catch(error => {
+      console.error('Signin error:', error);
+      this.setState({ 
+        error: 'Error signing in. New user? Please register below!' 
+      });
+    });
   }
 
   render() {
@@ -65,6 +75,9 @@ class Signin extends React.Component {
                 />
               </div>
             </fieldset>
+            {this.state.error && (
+              <div className="dark-red mb3">{this.state.error}</div>
+            )}
             <div className="">
               <input
                 onClick={this.onSubmitSignIn}
@@ -74,7 +87,7 @@ class Signin extends React.Component {
               />
             </div>
             <div className="lh-copy mt3">
-              <p  onClick={() => onRouteChange('register')} className="f6 link dim black db pointer">Register</p>
+              <p onClick={() => onRouteChange('register')} className="f6 link dim black db pointer">Register</p>
             </div>
           </div>
         </main>
